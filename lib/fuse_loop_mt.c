@@ -119,7 +119,7 @@ static void *fuse_do_work(void *data)
 		pthread_mutex_lock(&mt->lock);
 		if (!isforget)
 			mt->numavail++;
-		if (mt->numavail > 10) {
+		if (mt->numavail > 30) {
 			if (mt->exit) {
 				pthread_mutex_unlock(&mt->lock);
 				return NULL;
