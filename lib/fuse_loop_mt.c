@@ -72,7 +72,7 @@ static void *fuse_do_work(void *data)
 
 	max_idle_threads_char = getenv("MAX_IDLE_THREADS");
 	if (max_idle_threads_char != NULL)
-		max_idle_threads = atoi(max_idle_threads_char)
+		max_idle_threads = atoi(max_idle_threads_char);
 
 	fprintf(stderr, "fuse: max_idle_threads: %d\n", max_idle_threads);
 
