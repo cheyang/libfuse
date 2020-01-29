@@ -67,6 +67,14 @@ static void *fuse_do_work(void *data)
 {
 	struct fuse_worker *w = (struct fuse_worker *) data;
 	struct fuse_mt *mt = w->mt;
+	int max_idle_threads = 10;
+	char *max_idle_threads_char;
+
+	max_idle_threads_char = getenv("MAX_IDLE_THREADS");
+	if (max_idle_threads_char != NULL)
+		max_idle_threads = atoi(max_idle_threads_char)
+
+	fprintf(stderr, "fuse: max_idle_threads: %d\n", max_idle_threads);
 
 	while (!fuse_session_exited(mt->se)) {
 		int isforget = 0;
