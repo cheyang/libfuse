@@ -1830,6 +1830,7 @@ int fuse_fs_read_buf(struct fuse_fs *fs, const char *path,
 					} else {
 						fprintf(stderr, "pid=%d, tid=%d ", pid, tid);
 					}
+					p = (uint8_t *)mem;
 					fprintf(stderr, "libfuse: read all zeros on file %s, offset=%ld, size=%lu, nread=%d; ", path, off, size, res);
 					fprintf(stderr, "first 8 bytes = 0x%.2x %.2x %.2x %.2x %.2x %.2x %.2x %.2x; ",
 						(uint32_t)p[0], (uint32_t)p[1], (uint32_t)p[2], (uint32_t)p[3],
