@@ -1,0 +1,30 @@
+FROM ubuntu:16.04
+
+WORKDIR /
+
+# fuse3 requires meson 0.42, available from stretch-backports
+# wget depends on ca-certificates
+
+RUN \
+	apt-get update -qq && \
+	apt-get install -y -qq --no-install-recommends build-essential ca-certificates pkg-config wget udev git && \
+	apt-get install -y gcc make cmake gettext libtool autoconf automake && \
+	rm -rf /var/lib/apt/lists/*
+
+COPY . libfuse
+
+RUN \
+	cd libfuse && \
+	git checkout fuse_2_9_5_customize_multi_threads_log_zero_data
+
+
+WORKDIR "libfuse"
+
+RUN bash makeconf.sh && \
+	./configure && \
+	make -j8 && \
+	make install
+
+ENV LD_LIBRARY_PATH "/usr/local/lib:${LD_LIBRARY_PATH}"
+
+ENV MAX_IDLE_THREADS "10"
