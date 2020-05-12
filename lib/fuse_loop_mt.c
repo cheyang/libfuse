@@ -63,6 +63,12 @@ static void list_del_worker(struct fuse_worker *w)
 
 static int fuse_loop_start_thread(struct fuse_mt *mt);
 
+pthread_key_t thread_key;
+
+static void clean_fn(void *data) {
+
+}
+
 static void *fuse_do_work(void *data)
 {
 	struct fuse_worker *w = (struct fuse_worker *) data;
@@ -75,6 +81,8 @@ static void *fuse_do_work(void *data)
 		max_idle_threads = atoi(max_idle_threads_char);
 
 	fprintf(stderr, "fuse: max_idle_threads: %d\n", max_idle_threads);
+
+	pthread_setspecific(thread_key, (void *)w);
 
 	while (!fuse_session_exited(mt->se)) {
 		int isforget = 0;
@@ -240,6 +248,8 @@ int fuse_session_loop_mt(struct fuse_session *se)
 	mt.main.prev = mt.main.next = &mt.main;
 	sem_init(&mt.finish, 0, 0);
 	fuse_mutex_init(&mt.lock);
+
+	pthread_key_create(&thread_key, clean_fn);
 
 	pthread_mutex_lock(&mt.lock);
 	err = fuse_loop_start_thread(&mt);

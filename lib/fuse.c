@@ -38,6 +38,7 @@
 #include <sys/time.h>
 #include <sys/mman.h>
 #include <sys/file.h>
+#include <sys/syscall.h>
 
 #define FUSE_NODE_SLAB 1
 
@@ -1759,6 +1760,22 @@ static void fuse_free_buf(struct fuse_bufvec *buf)
 	}
 }
 
+struct fuse_worker {
+	struct fuse_worker *prev;
+	struct fuse_worker *next;
+	pthread_t thread_id;
+	size_t bufsize;
+	char *buf;
+	struct fuse_mt *mt;
+};
+
+extern pthread_key_t thread_key;
+
+static pid_t gettid(void)
+{
+	return syscall(SYS_gettid);
+}
+
 int fuse_fs_read_buf(struct fuse_fs *fs, const char *path,
 		     struct fuse_bufvec **bufp, size_t size, off_t off,
 		     struct fuse_file_info *fi)
@@ -1792,7 +1809,37 @@ int fuse_fs_read_buf(struct fuse_fs *fs, const char *path,
 			buf->buf[0].mem = mem;
 			*bufp = buf;
 
+			/* Here FUSE invokes user defined read operation */
 			res = fs->op.read(path, mem, size, off, fi);
+			if (off == 0 && res >= 8) {
+				const uint8_t* p = (uint8_t *)mem;
+				int i;
+				bool all_zero = true;
+				for (i=0; i < 8; i++) {
+					if (*(p++) != 0x00) {
+						all_zero = false;
+						break;
+					}
+				}
+				if (all_zero) {
+					struct fuse_worker *w = (struct fuse_worker *) pthread_getspecific(thread_key);
+					pid_t pid = getpid();
+					pid_t tid = gettid();
+					if (w != NULL) {
+						fprintf(stderr, "threadid=%lu, pid=%d, tid=%d ", w->thread_id, pid, tid);
+					}
+					fprintf(stderr, "libfuse: read all zeros on file %s, offset=%ld, size=%lu, nread=%d; ", path, off, size, res);
+					fprintf(stderr, "first 8 bytes = 0x%.2x %.2x %.2x %.2x %.2x %.2x %.2x %.2x; ",
+						(uint32_t)p[0], (uint32_t)p[1], (uint32_t)p[2], (uint32_t)p[3],
+						(uint32_t)p[4], (uint32_t)p[5], (uint32_t)p[6], (uint32_t)p[7]);
+					if (res >= 12) {
+						fprintf(stderr, "next 4 bytes = 0x%.2x %.2x %.2x %.2x",
+						(uint32_t)p[8], (uint32_t)p[9], (uint32_t)p[10], (uint32_t)p[11]);
+					}
+					fprintf(stderr, "\n");
+				}
+			}
+
 			if (res >= 0)
 				buf->buf[0].size = res;
 		}
