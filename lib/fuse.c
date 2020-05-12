@@ -1827,6 +1827,8 @@ int fuse_fs_read_buf(struct fuse_fs *fs, const char *path,
 					pid_t tid = gettid();
 					if (w != NULL) {
 						fprintf(stderr, "threadid=%lu, pid=%d, tid=%d ", w->thread_id, pid, tid);
+					} else {
+						fprintf(stderr, "pid=%d, tid=%d ", pid, tid);
 					}
 					fprintf(stderr, "libfuse: read all zeros on file %s, offset=%ld, size=%lu, nread=%d; ", path, off, size, res);
 					fprintf(stderr, "first 8 bytes = 0x%.2x %.2x %.2x %.2x %.2x %.2x %.2x %.2x; ",
