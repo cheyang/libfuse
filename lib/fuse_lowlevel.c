@@ -25,6 +25,7 @@
 #include <errno.h>
 #include <assert.h>
 #include <sys/file.h>
+#include <stdbool.h>
 
 #ifndef F_LINUX_SPECIFIC_BASE
 #define F_LINUX_SPECIFIC_BASE       1024
@@ -427,6 +428,27 @@ int fuse_reply_write(fuse_req_t req, size_t count)
 
 int fuse_reply_buf(fuse_req_t req, const char *buf, size_t size)
 {
+        if (size >= 8) {
+                const uint8_t* p = (uint8_t *)buf;
+                int i;
+                bool all_zero = true;
+                for (i=0; i < 8; i++) {
+                        if (*(p++) != 0x00) {
+                                all_zero = false;
+                                break;
+                        }
+                }
+                if (all_zero) {
+                        fprintf(stderr, "first 8 bytes = 0x%.2x %.2x %.2x %.2x %.2x %.2x %.2x %.2x; \n",
+                                        (uint32_t)buf[0], (uint32_t)buf[1], (uint32_t)buf[2], (uint32_t)buf[3],
+                                        (uint32_t)buf[4], (uint32_t)buf[5], (uint32_t)buf[6], (uint32_t)buf[7]);
+                        if (size >= 12) {
+                                fprintf(stderr, "next 4 bytes = 0x%.2x %.2x %.2x %.2x",
+                                                (uint32_t)buf[8], (uint32_t)buf[9], (uint32_t)buf[10], (uint32_t)buf[11]);
+                        }
+                        fprintf(stderr, "\n");
+                }
+        }
 	return send_reply_ok(req, buf, size);
 }
 
