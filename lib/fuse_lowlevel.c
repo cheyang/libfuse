@@ -2315,7 +2315,7 @@ static int fuse_ll_copy_from_pipe(struct fuse_bufvec *dst,
 	return 0;
 }
 
-extern pthread_key_t opcode_key;
+extern pthread_key_t req_key;
 
 static void fuse_ll_process_buf(void *data, const struct fuse_buf *buf,
 				struct fuse_chan *ch)
@@ -2435,7 +2435,7 @@ static void fuse_ll_process_buf(void *data, const struct fuse_buf *buf,
 		in = mbuf;
 	}
 
-	uint32_t *popcode =	pthread_getspecific(opcode_key);
+	uint32_t *popcode =	pthread_getspecific(req_key);
 	*popcode = in->opcode;
 
 	inarg = (void *) &in[1];

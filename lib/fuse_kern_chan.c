@@ -11,6 +11,7 @@
 #include "fuse_i.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <errno.h>
 #include <pthread.h>
 #include <unistd.h>
@@ -55,7 +56,15 @@ restart:
 	return res;
 }
 
-extern pthread_key_t opcode_key;
+struct req_info {
+	uint32_t opcode;
+	char *path;
+	size_t size;
+	off_t off;
+	int res;
+};
+
+extern pthread_key_t req_key;
 
 extern pid_t gettid(void);
 
@@ -64,11 +73,14 @@ static int fuse_kern_chan_send(struct fuse_chan *ch, const struct iovec iov[],
 {
 	if (iov) {
 		/* This is the last step before FUSE write data to kernel */
-		uint32_t opcode = *(uint32_t *)pthread_getspecific(opcode_key);
-		if (opcode == FUSE_READ) {
+		struct req_info *info = (struct req_info *)pthread_getspecific(req_key);
+		if (info->opcode == FUSE_READ) {
 			/* then iov[1] stores the data that user daemon will write to kernel */
+			if (info->res != iov[1].iov_len) {
+				fprintf(stderr, "libfuse (chan): length not equal (%d != %lu)\n", info->res, iov[1].iov_len);
+			}
 			const uint8_t* p = (uint8_t *)iov[1].iov_base;
-			if (iov[1].iov_len >= 8) {
+			if (info->off == 0 && iov[1].iov_len >= 8) {
 				int i;
 				int all_zero = 1;
 				for (i=0; i < 8; i++) {
@@ -82,9 +94,11 @@ static int fuse_kern_chan_send(struct fuse_chan *ch, const struct iovec iov[],
 				fprintf(stderr, "pid=%d, tid=%d; ", pid, tid);
 				p = (uint8_t *)iov[1].iov_base;
 				if (all_zero) {
-					fprintf(stderr, "libfuse (chan): read all zeros nread=%lu; ", iov[1].iov_len);
+					fprintf(stderr, "libfuse: read all zeros on file %s, offset=%ld, size=%lu, nread=%d; ",
+						info->path, info->off, info->size, info->res);
 				} else {
-					fprintf(stderr, "libfuse (chan): nread=%lu; ", iov[1].iov_len);
+					fprintf(stderr, "libfuse: file %s, offset=%ld, size=%lu, nread=%d; ",
+						info->path, info->off, info->size, info->res);
 				}
 				fprintf(stderr, "first 8 bytes = 0x%.2x %.2x %.2x %.2x %.2x %.2x %.2x %.2x; ",
 					(uint32_t)p[0], (uint32_t)p[1], (uint32_t)p[2], (uint32_t)p[3],
@@ -95,6 +109,7 @@ static int fuse_kern_chan_send(struct fuse_chan *ch, const struct iovec iov[],
 				}
 				fprintf(stderr, "\n");
 			}
+			free(info->path);
 		}
 
 		ssize_t res = writev(fuse_chan_fd(ch), iov, count);

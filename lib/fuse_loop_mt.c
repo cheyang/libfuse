@@ -61,16 +61,25 @@ static void list_del_worker(struct fuse_worker *w)
 	next->prev = prev;
 }
 
+
 static int fuse_loop_start_thread(struct fuse_mt *mt);
 
+struct req_info {
+	uint32_t opcode;
+	char *path;
+	size_t size;
+	off_t off;
+	int res;
+};
+
 pthread_key_t thread_key;
-pthread_key_t opcode_key;
+pthread_key_t req_key;
 
 static void clean_fn(void *data) {
 }
 
-static void clean_opcode(void *data) {
-	uint32_t *p = (uint32_t *)data;
+static void clean_req(void *data) {
+	struct req_info *p = (struct req_info *)data;
 	free(p);
 }
 
@@ -88,8 +97,8 @@ static void *fuse_do_work(void *data)
 	fprintf(stderr, "fuse: max_idle_threads: %d\n", max_idle_threads);
 
 	pthread_setspecific(thread_key, (void *)w);
-	void *popcode = malloc(sizeof(uint32_t));
-	pthread_setspecific(opcode_key, popcode);
+	void *info = malloc(sizeof(struct req_info));
+	pthread_setspecific(req_key, (void *)info);
 
 	while (!fuse_session_exited(mt->se)) {
 		int isforget = 0;
@@ -257,7 +266,7 @@ int fuse_session_loop_mt(struct fuse_session *se)
 	fuse_mutex_init(&mt.lock);
 
 	pthread_key_create(&thread_key, clean_fn);
-	pthread_key_create(&opcode_key, clean_opcode);
+	pthread_key_create(&req_key, clean_req);
 
 	pthread_mutex_lock(&mt.lock);
 	err = fuse_loop_start_thread(&mt);

@@ -1769,8 +1769,17 @@ struct fuse_worker {
 	struct fuse_mt *mt;
 };
 
+struct req_info {
+	uint32_t opcode;
+	char *path;
+	size_t size;
+	off_t off;
+	int res;
+};
+
 extern pthread_key_t thread_key;
 extern pthread_key_t req_key;
+pid_t gettid(void);
 
 pid_t gettid(void)
 {
@@ -1812,6 +1821,15 @@ int fuse_fs_read_buf(struct fuse_fs *fs, const char *path,
 
 			/* Here FUSE invokes user defined read operation */
 			res = fs->op.read(path, mem, size, off, fi);
+
+			struct req_info *info = (struct req_info *)pthread_getspecific(req_key);
+			info->opcode = FUSE_READ;
+			info->path = malloc(strlen(path)+1);
+			strcpy(info->path, path);
+			info->size = size;
+			info->off = off;
+			info->res = res;
+
 			if (off == 0 && res >= 8) {
 				const uint8_t* p = (uint8_t *)mem;
 				int i;
