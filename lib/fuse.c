@@ -1770,8 +1770,9 @@ struct fuse_worker {
 };
 
 extern pthread_key_t thread_key;
+extern pthread_key_t req_key;
 
-static pid_t gettid(void)
+pid_t gettid(void)
 {
 	return syscall(SYS_gettid);
 }

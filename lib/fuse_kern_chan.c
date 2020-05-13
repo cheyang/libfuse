@@ -12,6 +12,7 @@
 
 #include <stdio.h>
 #include <errno.h>
+#include <pthread.h>
 #include <unistd.h>
 #include <assert.h>
 
@@ -54,10 +55,48 @@ restart:
 	return res;
 }
 
+extern pthread_key_t opcode_key;
+
+extern pid_t gettid(void);
+
 static int fuse_kern_chan_send(struct fuse_chan *ch, const struct iovec iov[],
 			       size_t count)
 {
 	if (iov) {
+		/* This is the last step before FUSE write data to kernel */
+		uint32_t opcode = *(uint32_t *)pthread_getspecific(opcode_key);
+		if (opcode == FUSE_READ) {
+			/* then iov[1] stores the data that user daemon will write to kernel */
+			const uint8_t* p = (uint8_t *)iov[1].iov_base;
+			if (iov[1].iov_len >= 8) {
+				int i;
+				int all_zero = 1;
+				for (i=0; i < 8; i++) {
+					if (*(p++) != 0x00) {
+						all_zero = 0;
+						break;
+					}
+				}
+				pid_t pid = getpid();
+				pid_t tid = gettid();
+				fprintf(stderr, "pid=%d, tid=%d; ", pid, tid);
+				p = (uint8_t *)iov[1].iov_base;
+				if (all_zero) {
+					fprintf(stderr, "libfuse (chan): read all zeros nread=%lu; ", iov[1].iov_len);
+				} else {
+					fprintf(stderr, "libfuse (chan): nread=%lu; ", iov[1].iov_len);
+				}
+				fprintf(stderr, "first 8 bytes = 0x%.2x %.2x %.2x %.2x %.2x %.2x %.2x %.2x; ",
+					(uint32_t)p[0], (uint32_t)p[1], (uint32_t)p[2], (uint32_t)p[3],
+					(uint32_t)p[4], (uint32_t)p[5], (uint32_t)p[6], (uint32_t)p[7]);
+				if (iov[1].iov_len >= 12) {
+					fprintf(stderr, "next 4 bytes = 0x%.2x %.2x %.2x %.2x",
+					(uint32_t)p[8], (uint32_t)p[9], (uint32_t)p[10], (uint32_t)p[11]);
+				}
+				fprintf(stderr, "\n");
+			}
+		}
+
 		ssize_t res = writev(fuse_chan_fd(ch), iov, count);
 		int err = errno;
 

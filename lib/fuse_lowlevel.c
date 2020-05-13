@@ -444,7 +444,6 @@ static int fuse_send_data_iov_fallback(struct fuse_ll *f, struct fuse_chan *ch,
 	    !(buf->buf[0].flags & FUSE_BUF_IS_FD)) {
 		/* FIXME: also avoid memory copy if there are multiple buffers
 		   but none of them contain an fd */
-
 		iov[iov_count].iov_base = buf->buf[0].mem;
 		iov[iov_count].iov_len = len;
 		iov_count++;
@@ -2316,6 +2315,8 @@ static int fuse_ll_copy_from_pipe(struct fuse_bufvec *dst,
 	return 0;
 }
 
+extern pthread_key_t opcode_key;
+
 static void fuse_ll_process_buf(void *data, const struct fuse_buf *buf,
 				struct fuse_chan *ch)
 {
@@ -2433,6 +2434,9 @@ static void fuse_ll_process_buf(void *data, const struct fuse_buf *buf,
 
 		in = mbuf;
 	}
+
+	uint32_t *popcode =	pthread_getspecific(opcode_key);
+	*popcode = in->opcode;
 
 	inarg = (void *) &in[1];
 	if (in->opcode == FUSE_WRITE && f->op.write_buf)
