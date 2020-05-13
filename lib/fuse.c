@@ -1821,26 +1821,28 @@ int fuse_fs_read_buf(struct fuse_fs *fs, const char *path,
 						break;
 					}
 				}
-				if (all_zero) {
-					struct fuse_worker *w = (struct fuse_worker *) pthread_getspecific(thread_key);
-					pid_t pid = getpid();
-					pid_t tid = gettid();
-					if (w != NULL) {
-						fprintf(stderr, "threadid=%lu, pid=%d, tid=%d ", w->thread_id, pid, tid);
-					} else {
-						fprintf(stderr, "pid=%d, tid=%d ", pid, tid);
-					}
-					p = (uint8_t *)mem;
-					fprintf(stderr, "libfuse: read all zeros on file %s, offset=%ld, size=%lu, nread=%d; ", path, off, size, res);
-					fprintf(stderr, "first 8 bytes = 0x%.2x %.2x %.2x %.2x %.2x %.2x %.2x %.2x; ",
-						(uint32_t)p[0], (uint32_t)p[1], (uint32_t)p[2], (uint32_t)p[3],
-						(uint32_t)p[4], (uint32_t)p[5], (uint32_t)p[6], (uint32_t)p[7]);
-					if (res >= 12) {
-						fprintf(stderr, "next 4 bytes = 0x%.2x %.2x %.2x %.2x",
-						(uint32_t)p[8], (uint32_t)p[9], (uint32_t)p[10], (uint32_t)p[11]);
-					}
-					fprintf(stderr, "\n");
+				struct fuse_worker *w = (struct fuse_worker *) pthread_getspecific(thread_key);
+				pid_t pid = getpid();
+				pid_t tid = gettid();
+				if (w != NULL) {
+					fprintf(stderr, "threadid=%lu, pid=%d, tid=%d; ", w->thread_id, pid, tid);
+				} else {
+					fprintf(stderr, "pid=%d, tid=%d; ", pid, tid);
 				}
+				p = (uint8_t *)mem;
+				if (all_zero) {
+					fprintf(stderr, "libfuse: read all zeros on file %s, offset=%ld, size=%lu, nread=%d; ", path, off, size, res);
+				} else {
+					fprintf(stderr, "libfuse: file %s, offset=%ld, size=%lu, nread=%d; ", path, off, size, res);
+				}
+				fprintf(stderr, "first 8 bytes = 0x%.2x %.2x %.2x %.2x %.2x %.2x %.2x %.2x; ",
+					(uint32_t)p[0], (uint32_t)p[1], (uint32_t)p[2], (uint32_t)p[3],
+					(uint32_t)p[4], (uint32_t)p[5], (uint32_t)p[6], (uint32_t)p[7]);
+				if (res >= 12) {
+					fprintf(stderr, "next 4 bytes = 0x%.2x %.2x %.2x %.2x",
+					(uint32_t)p[8], (uint32_t)p[9], (uint32_t)p[10], (uint32_t)p[11]);
+				}
+				fprintf(stderr, "\n");
 			}
 
 			if (res >= 0)
