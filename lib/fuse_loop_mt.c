@@ -74,7 +74,7 @@ static void *fuse_do_work(void *data)
 	if (max_idle_threads_char != NULL)
 		max_idle_threads = atoi(max_idle_threads_char);
 
-	fprintf(stderr, "fuse: max_idle_threads: %d\n", max_idle_threads);
+	// fprintf(stderr, "fuse: max_idle_threads: %d\n", max_idle_threads);
 
 	while (!fuse_session_exited(mt->se)) {
 		int isforget = 0;
